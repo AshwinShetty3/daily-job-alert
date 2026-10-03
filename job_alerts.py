@@ -227,15 +227,24 @@ def jsearch(config, state, now, reserve=True):
         if reserve:
             save_state(state)
         try:
-            data = get("https://jsearch.p.rapidapi.com/search", headers={"X-RapidAPI-Key": os.environ["JSEARCH_API_KEY"], "X-RapidAPI-Host": "jsearch.p.rapidapi.com"}, params={"query": query + " jobs", "country": country, "date_posted": "today", "num_pages": 1, "page": 1}).json()
-            for j in data.get("data", []):
+            response = get("https://api.openwebninja.com/jsearch/search-v2", headers={"x-api-key": os.environ["JSEARCH_API_KEY"]}, params={"query": query + " jobs", "country": country, "language": "en", "date_posted": "today", "num_pages": 1}).json()
+            results = response.get("data", [])
+            if isinstance(results, dict):
+                results = results.get("jobs", [])
+            for j in results:
+                title = j.get("job_title")
+                if not title:
+                    continue
                 location = ", ".join(str(j[k]) for k in ["job_city", "job_state", "job_country"] if j.get(k))
                 names = {"IN":"India", "US":"USA", "GB":"UK", "CA":"Canada", "DE":"Germany", "NL":"Netherlands", "AE":"UAE", "SG":"Singapore", "AU":"Australia"}
                 location = ", ".join(names.get(part.strip().upper(), part.strip()) for part in location.split(","))
                 exp = j.get("job_required_experience") or {}
                 months = exp.get("required_experience_in_months")
-                requirement = f"{float(months)/12:g}+ years" if months is not None else ""
-                jobs.append(make_job(j["job_title"], j.get("employer_name"), location, (j.get("job_publisher") or "Aggregator") + " via JSearch", j.get("job_apply_link"), j.get("job_posted_at_datetime_utc") or j.get("job_posted_at_timestamp"), j.get("job_description"), experience=requirement, source_id=j.get("job_id", ""), mode="Remote" if j.get("job_is_remote") else ""))
+                years = j.get("required_experience_years")
+                requirement = f"{float(years):g}+ years" if years is not None else f"{float(months)/12:g}+ years" if months is not None else ""
+                arrangement = str(j.get("work_arrangement") or "").lower()
+                mode = "Remote" if j.get("job_is_remote") or arrangement == "remote" else "Hybrid" if arrangement == "hybrid" else "Onsite" if arrangement in {"onsite", "on-site"} else ""
+                jobs.append(make_job(title, j.get("employer_name"), location, (j.get("job_publisher") or "Aggregator") + " via JSearch", j.get("job_apply_link"), j.get("job_posted_at_datetime_utc") or j.get("job_posted_at_timestamp") or j.get("job_posted_at"), j.get("job_description"), experience=requirement, source_id=j.get("job_id", ""), mode=mode, seniority=j.get("seniority_level", "")))
         except Exception as error:
             warnings.append(f"JSearch {country}: {type(error).__name__}; check subscription/quota")
     return jobs, warnings
