@@ -53,6 +53,10 @@ def safe_url(value):
     return value if urlparse(value).scheme in ("https", "http") and urlparse(value).netloc else ""
 
 
+def message_key(message_id):
+    return hashlib.sha256(message_id.encode()).hexdigest()
+
+
 def canonical_url(value):
     p = urlparse(safe_url(value))
     query = [(k, v) for k, v in parse_qsl(p.query) if not k.lower().startswith("utm_") and k.lower() not in {"trk", "trackingid", "ref", "source"}]
@@ -320,7 +324,7 @@ def gmail(config, state, now):
     while True:
         data = service.users().messages().list(userId="me", labelIds=[label, "UNREAD"], maxResults=100, pageToken=page).execute()
         for item in data.get("messages", []):
-            if item["id"] in state.get("processed_messages", []):
+            if message_key(item["id"]) in state.get("processed_messages", []):
                 ids.append(item["id"])
                 continue
             msg = service.users().messages().get(userId="me", id=item["id"], format="full").execute()
@@ -427,7 +431,7 @@ def run(args):
     # Only record delivery after SMTP accepts the digest.
     for key in batch:
         state["seen"][key] = now.isoformat()
-    state["processed_messages"] = list(set(state.get("processed_messages", [])) | set(message_ids))
+    state["processed_messages"] = list(set(state.get("processed_messages", [])) | {message_key(mid) for mid in message_ids})
     save_state(state)
     mark_processed(service, message_ids, config)
 

@@ -2,7 +2,9 @@
 
 Built for your 2.8+ years of experience. The full copy-ready Python code is in `job_alerts.py`; GitHub runs it daily at **08:00 IST** using `.github/workflows/daily-jobs.yml`.
 
-**Status: built locally; not activated.** You must complete the account authorization and GitHub setup below. No real email has been sent. The system never visits or scrapes job listing pages; it uses public APIs/RSS and your own alert emails.
+**Status: built; awaiting account authorization and activation.** This project is being published to the public repository `AshwinShetty3/daily-job-alert` at the owner's request. No real email has been sent. Scheduled runs stay paused until the repository variable `ALERTS_ENABLED` is set to `true`. The system never visits or scrapes job listing pages; it uses public APIs/RSS and your own alert emails.
+
+For this public repository, keep all credentials in GitHub Secrets. Digest preview artifacts are disabled by default because alert content and tracking links may be personal. Keep `UPLOAD_PREVIEW` unset; inspect local previews instead. The committed state stores only hashed job/message identifiers and request counts.
 
 ## 1. Requirements and honest limits
 
@@ -145,7 +147,7 @@ Remotive, Remote OK, Himalayas and WWR public RSS. Source names and original lis
 
 ## 9. GitHub setup and secrets
 
-Create an empty **private** GitHub repository. Push these files using GitHub Desktop or Git. From this folder, replacing the URL:
+The owner has created the **public** repository `AshwinShetty3/daily-job-alert`. For another installation, create an empty repository with your preferred visibility. Push these files using GitHub Desktop or Git. From this folder, replacing the URL:
 
 ```powershell
 git add .
@@ -173,7 +175,9 @@ In **Variables**, optionally set `JSEARCH_MONTHLY_LIMIT`, `DATE_POLICY` (`strict
 
 Actions must be enabled. Allow the workflow's `contents: write` permission; the default branch must permit bot commits to `data/state.json`. Use a dedicated repository if branch protection prevents this. Without successful state pushes, future runs can resend jobs and exceed the local API request budget.
 
-The included workflow has `30 2 * * *`, serial concurrency, manual dry-run, tests, short-lived preview artifacts, and an `always()` state-persistence step. Keep `data/state.json` committed. Do not reset it to empty unless you intentionally want to forget delivered jobs. State contains hashes and Gmail message IDs, not credentials or email bodies. Keep the repository private.
+The included workflow has `30 2 * * *`, serial concurrency, manual dry-run, tests, optional short-lived preview artifacts, and an `always()` state-persistence step. Keep `data/state.json` committed. Do not reset it to empty unless you intentionally want to forget delivered jobs. State contains hashed job/message identifiers and usage counts, not credentials or email bodies. Preview uploads remain disabled unless `UPLOAD_PREVIEW=true`; keep them disabled in this public repository.
+
+After completing Gmail setup and a successful manual email test, add the repository **variable** `ALERTS_ENABLED` with value `true` to activate the daily schedule. Manual runs remain available before activation.
 
 ## 10. Experience, dates and duplicate rules
 
@@ -208,7 +212,7 @@ To send for real:
 .\.venv\Scripts\python.exe job_alerts.py
 ```
 
-On GitHub: Actions → Daily job alerts → Run workflow → leave `dry_run` checked → inspect logs and download preview artifact. Once verified, run again with `dry_run` unchecked to send. Scheduled runs always send. Commit any local delivery/budget changes before switching to GitHub. Use exactly one scheduler; running local/n8n/GitHub writers concurrently is unsupported.
+On GitHub: Actions → Daily job alerts → Run workflow → leave `dry_run` checked → inspect logs. Preview artifacts are disabled by default; use the local preview commands above. Once verified, run again with `dry_run` unchecked to send. Set `ALERTS_ENABLED=true` to enable scheduled sending. Commit any local delivery/budget changes before switching to GitHub. Use exactly one scheduler; running local/n8n/GitHub writers concurrently is unsupported.
 
 ## 12. Troubleshooting
 

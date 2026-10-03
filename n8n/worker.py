@@ -65,7 +65,7 @@ def operation(path, payload):
         value = json.loads(pending.read_text())
         current = state()
         current["seen"].update({k: now.isoformat() for k in value["keys"]})
-        current["processed_messages"] = list(set(current.get("processed_messages", [])) | set(value["message_ids"]))
+        current["processed_messages"] = list(set(current.get("processed_messages", [])) | {a.message_key(mid) for mid in value["message_ids"]})
         a.save_state(current)
         if value["message_ids"]:
             a.mark_processed(a.gmail_service(), value["message_ids"], CONFIG)
