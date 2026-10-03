@@ -1,0 +1,7 @@
+{
+  "queries": ["DevOps Engineer", "Cloud Engineer", "AWS Engineer", "AWS DevOps", "Cloud DevOps", "Site Reliability Engineer", "Platform Engineer", "Kubernetes Engineer", "Cloud Infrastructure Engineer"],
+  "adzuna_countries": ["in", "us", "gb", "ca", "de", "nl", "au", "sg"],
+  "jsearch_countries": ["in", "us", "gb", "ca", "de", "nl", "ae", "sg", "au"],
+  "gmail_label": "JobAlerts",
+  "gmail_processed_label": "JobAlertsProcessed"
+}

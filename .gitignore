@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+credentials.json
+token.json
+preview.html
+samples/private*
+.vendor/
+n8n/.env
+data/pending/

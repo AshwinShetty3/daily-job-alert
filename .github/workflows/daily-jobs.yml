@@ -1,0 +1,65 @@
+name: Daily job alerts
+on:
+  schedule:
+    - cron: '30 2 * * *' # 02:30 UTC = 08:00 IST; GitHub may delay execution
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview without sending or processing Gmail
+        type: boolean
+        default: true
+permissions:
+  contents: write
+concurrency:
+  group: daily-job-alerts
+  cancel-in-progress: false
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
+      ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+      ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+      JSEARCH_API_KEY: ${{ secrets.JSEARCH_API_KEY }}
+      JSEARCH_MONTHLY_LIMIT: ${{ vars.JSEARCH_MONTHLY_LIMIT || '0' }}
+      DATE_POLICY: ${{ vars.DATE_POLICY || 'strict' }}
+      GMAIL_ENABLED: ${{ vars.GMAIL_ENABLED || 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Fetch and send or preview
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
+            python job_alerts.py --dry-run
+          else
+            python job_alerts.py
+          fi
+      - name: Persist delivered IDs and API request budget, including after failure
+        if: always()
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/state.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update job alert delivery state and API budget'
+            git push
+          fi
+      - name: Private preview (contains job metadata, never OAuth secrets)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-digest-preview
+          path: preview.html
+          retention-days: 3
+          if-no-files-found: ignore

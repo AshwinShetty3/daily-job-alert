@@ -1,0 +1,23 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:stable
+    ports:
+      - '127.0.0.1:5678:5678'
+    environment:
+      GENERIC_TIMEZONE: Asia/Kolkata
+      TZ: Asia/Kolkata
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set a persistent random encryption key}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+  worker:
+    build:
+      context: ..
+      dockerfile: n8n/Dockerfile
+    env_file: .env
+    volumes:
+      - ../data:/app/data
+    restart: unless-stopped
+    # Internal Docker network only. No host port exposed.
+volumes:
+  n8n_data:
