@@ -16,7 +16,7 @@ For this public repository, keep all credentials in GitHub Secrets. Digest previ
 | Local setup | Python 3.12+ and Git; only needed for initial authorization/testing |
 | Platform alerts | Your LinkedIn, Naukri, Foundit and Instahyre accounts |
 | Adzuna, optional | Free developer app ID and key, approved usage allowance |
-| JSearch, optional | RapidAPI account, genuinely free JSearch subscription with suitable limits and no paid overage |
+| JSearch, optional | OpenWeb Ninja API key on its $0 Basic plan (200 requests/month, hard limit) |
 | n8n alternative | Docker and an existing computer that stays on and connected |
 
 There is no paid hosting dependency in the GitHub version. Private-repository Actions use your account's included minutes; other repositories share that allowance. Review usage, leave paid spending disabled, and keep runs below the included allowance. Public repositories have different billing rules and expose code/state. See [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
@@ -26,7 +26,7 @@ Important limits:
 - **08:00 is the scheduled time, not a guaranteed delivery time.** GitHub may delay or drop scheduled jobs under load. Schedules run on the default branch; inactive public repositories can have schedules disabled. [GitHub schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 - **Remotive delays public jobs by 24 hours**, so strict last-24-hours mode will normally exclude them. [Remotive API terms](https://remotive.com/remote-jobs/api).
 - **Himalayas refreshes its API cache daily.** Bounded pagination and free-tier quotas mean this system cannot promise all openings. [Himalayas API](https://github.com/Himalayas-App/remote-jobs-api).
-- **JSearch does not guarantee LinkedIn, Indeed or Glassdoor coverage.** The digest displays the publisher actually returned by the API. Its current free allowance could not be independently read from its dynamic pricing page; no allowance is assumed in code. Verify it yourself before enabling. [JSearch pricing](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch/pricing).
+- **JSearch does not guarantee LinkedIn, Indeed or Glassdoor coverage.** The digest displays the publisher actually returned by the API. OpenWeb Ninja's Free plan is $0/month with 200 requests/month and a hard limit; this workflow can use a lower local cap. [JSearch plan and docs](https://www.openwebninja.com/api/jsearch).
 - Gmail alert arrival is **not** proof a job was posted in the last 24 hours. Default `strict` mode excludes jobs without an absolute source posting date. Optional `alert_received` mode includes recently received alerts but labels the date as unverified; it relaxes the stated freshness requirement.
 - Email templates change. The parser is a conservative heuristic, not a claim that every platform template is already verified. Unrecognized messages and messages with unknown posting dates remain unread and generate a notice. Test against real alerts before relying on it; do not commit private email samples.
 - Location restrictions and work authorization still matter. “Remote USA” is not “work from anywhere.” Remote roles without a known eligible country or worldwide label are held out.
@@ -130,16 +130,15 @@ Register at [Adzuna developer portal](https://developer.adzuna.com/), obtain you
 
 Default configuration makes up to 72 requests/day: nine keywords × eight supported country candidates × one page. Reduce country/keyword lists or leave Adzuna disabled if your approved quota does not cover this. UAE is covered through JSearch/alerts rather than assuming Adzuna supports it. Country availability can change; source failures appear in the digest. The script makes no automatic paid-plan upgrades. Adzuna's `created` is the date supplied by its API, which may be board ingestion rather than the employer's first publication.
 
-### JSearch on RapidAPI
+### JSearch on OpenWeb Ninja
 
-1. Open [JSearch](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch).
-2. Check Pricing and select a **$0 subscription only if available**, with paid overage disabled or a hard stop enforced by your account/provider. If that cannot be guaranteed, leave JSearch disabled.
-3. Copy the `X-RapidAPI-Key` for your app as **JSEARCH_API_KEY**.
-4. Set GitHub **variable** `JSEARCH_MONTHLY_LIMIT` to your verified free request count. Use 0 to disable. For example, **only if your plan actually permits 100 requests/month**, set 100.
+1. Open [JSearch on OpenWeb Ninja](https://www.openwebninja.com/api/jsearch) and keep the **Basic $0/month** plan. The current Basic plan allows 200 requests/month with a hard limit; it does not list paid overage for that plan.
+2. Add your OpenWeb Ninja API key to GitHub as the repository **secret** `JSEARCH_API_KEY`. Use the API key from the OpenWeb Ninja portal, not a RapidAPI key. Never paste the key into chat, source code, or a public file.
+3. Add the repository **variable** `JSEARCH_MONTHLY_LIMIT` with value `120` as a conservative local cap. The workflow will stop requesting JSearch at that count. Use `0` to keep JSearch disabled.
 
-Code makes at most two JSearch requests/day (up to 62 in a 31-day month) and rotates the 81 keyword/country pairs. This is quota-efficient but does not query every keyword in every country daily. Gmail alerts complement it. A full nine-keyword × nine-country daily search costs at least 2,511 requests/month before pagination; it cannot be promised within an unspecified free tier.
+The integration calls `https://api.openwebninja.com/jsearch/search-v2` with the `x-api-key` header. It makes at most two requests per run (normally two each scheduled day: about 60–62 requests in a 31-day month) and rotates the 81 keyword/country pairs. Manual runs and other apps sharing the same key also consume quota; the 120-call workflow cap leaves some room under the provider's 200-call hard limit. Usage reservations are saved before each request, including failed requests. The local counter resets on the UTC calendar month, while the provider may use a different reset date, so keep the provider hard limit as the final guard. Live dry-runs consume quota too.
 
-Reservations are stored before requests, including failed requests. Provider billing periods may differ from UTC calendar months; set the local cap below the available allowance and rely on the provider's hard stop as the final guard. Other apps sharing the API key consume the same allowance. Live dry-runs consume quota too.
+The digest displays the publisher returned by JSearch, but listings from LinkedIn, Indeed or Glassdoor are not guaranteed. Results are filtered through the same date, location, role and experience rules as the other sources.
 
 ### Sources requiring no API key
 
@@ -169,7 +168,7 @@ Repository → Settings → Secrets and variables → Actions → **New reposito
 | `GMAIL_TOKEN_JSON` | Entire private `token.json` JSON |
 | `ADZUNA_APP_ID` | Optional Adzuna ID |
 | `ADZUNA_APP_KEY` | Optional Adzuna key |
-| `JSEARCH_API_KEY` | Optional RapidAPI key |
+| `JSEARCH_API_KEY` | Optional OpenWeb Ninja JSearch key |
 
 In **Variables**, optionally set `JSEARCH_MONTHLY_LIMIT`, `DATE_POLICY` (`strict` or `alert_received`), and `GMAIL_ENABLED` (`true` or `false`). No OAuth secret or password belongs in variables, workflow code or `config.json`.
 
